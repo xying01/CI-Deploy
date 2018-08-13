@@ -1,0 +1,73 @@
+TUP_Studio PATCH_NAME.zip
+
+<div class="lia-message-template-content-zone">
+<p>Patch notes:</p>
+<table>
+<tbody>
+<tr>
+<td width="227">
+<p><strong>Patch Name</strong></p>
+</td>
+<td width="227">
+<p>PATCH_NAME</p>
+</td>
+</tr>
+<tr>
+<td width="227">
+<p><strong>Download link</strong></p>
+</td>
+<td width="227">
+<p><a href="https://talend-update.talend.com/nexus/service/local/repositories/Talend_Patches_For_Release_6.3.1_Dev/content/org/talend/studio/patch/updatesite/PATCH_NAME/6.3.1/PATCH_NAME.zip" target="_self" rel="nofollow noopener noreferrer noopener noreferrer">https://talend-update.talend.com:443/nexus/service/local/repositories/Talend_Patches_For_Release_6.3...</a></p>
+</td>
+</tr>
+<tr>
+<td width="227">
+<p><strong>Release Date</strong></p>
+</td>
+<td width="227">
+<p>RELEASE_DATE</p>
+</td>
+</tr>
+<tr>
+<td width="227">
+<p><strong>Target Version</strong></p>
+<p><strong><font color="#FF0000">Required</font></strong></p>
+</td>
+<td width="227">
+<p>&nbsp;6.3.1</p>
+</td>
+</tr>
+<tr>
+<td width="227">
+<p><strong>Product affected</strong></p>
+TUP_Studio PATCH_NAME.zip
+
+<p><font color="#FF0000"><strong><span>Required</span></strong></font></p>
+</td>
+<td width="227">
+<p>&nbsp;Talend Studio</p>
+</td>
+</tr>
+</tbody>
+</table>
+
+<p>This patch is cumulative and contains the fixes included in the following patches:</p>
+<ul>
+<li>PATCH_NAME.zip</li>
+</ul>
+<h1 id="toc-hId-476938927">Fixed issues</h1>
+<p><a href="https://jira.talendforge.org/browse/BUG_NAME" target="_self" rel="nofollow noopener noreferrer">https://jira.talendforge.org/browse/BUG_NAME</a> (<a href="https://jira.talendforge.org/browse/TPS_NAME" target="_self" rel="nofollow noopener noreferrer">TPS_NAME</a>)
+</p>
+</div>
+<div class="lia-message-template-content-zone">
+<h1 id="toc-hId-1364442608">Prerequisites</h1>
+<p>N/A</p>
+<h1 id="toc-hId--2043021007">Downloading the patch</h1>
+<p><a href="https://talend-update.talend.com/nexus/service/local/repositories/Talend_Patches_For_Release_6.4.1_Dev/content/org/talend/studio/patch/updatesite/PATCH_NAME/6.3.1/PATCH_NAME.zip" target="_blank" rel="nofollow noopener noreferrer noopener noreferrer">https://talend-update.talend.com:443/nexus/service/local/repositories/Talend_Patches_For_Release_6.4...</a></p>
+<h2 id="toc-hId-1331995507">Installing the patch using Software update</h2>
+<p>1)Logon TAC and switch to Configuration-&gt;Software Update , fill correct value of it, save<br>2)Switch to Software update page, could see the new patch ,you can download patch from here (patch will store in nexus)<br>3)On Studio Side: Logon Studio with remote mode, at logon page could see Update button, click this button, install the patch</p>
+<h2 id="toc-hId--2075468108">Installing the patch using Talend Studio</h2>
+<p>1)create folder which named "patches" under your studio installer directory and copy patch .zip file to this folder<br>2)restart your studio,will popup up prompt window at first time and then click ok button to install the patch, or restart commandline, patch will be installed automatically.</p>
+<h2 id="toc-hId--1187964427">Installing the patch using Commandline</h2>
+<p>&nbsp;1)Execute command: Talend-Studio-win-x86_64.exe -nosplash -application org.talend.commandline.CommandLine -consoleLog -data commandline-workspace startServer -p 8002 --talendDebug<br>2)Execute command: initRemote {tac_url} -ul {TAC login username} -up {TAC login password}<br>3)Execute command: checkAndUpdate -tu {TAC login username} -tup {TAC login password}</p>
+</div>

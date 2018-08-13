@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="ReadyStudio" default="run" basedir=".">
+	<property file="settings/ant.properties" />
+	<taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
+	<!--Get first number of version -->
+	<propertyregex property="versionF" input="${sVersion}" regexp="[5-9]" select="\0"/>
+	<propertyregex property="versionL" input="${sVersion}" regexp="[5-9].[0-9]" select="\0"/>
+	<target name="DownloadUnzipStudio">
+		<sshexec host="${samba.server.ip}" username="${samba.server.user}" password="${samba.server.passwd}" trust="true" outputproperty="studiolist" output="talend/studiolist.txt" command="find ${samba.server.ndir}/ -name 'Talend-Studio*V${sVersion}SNAPSHOT.zip' | sort -k 1r|head -n 1"/>
+		<loadfile srcfile="talend/studiolist.txt" property="studio"/>
+		<scp file="${samba.server.user}:${samba.server.passwd}@${samba.server.ip}:${studio}" trust="true" todir="talend" />
+		<propertyregex property="sname" input="${studio}" regexp=".*/all_.*/(.*).zip" select="\1"/>
+		<unzip src="talend/${sname}.zip" dest="talend"></unzip>
+		<echo append="false" file="talend/sname.txt">${sname}</echo>
+	</target>
+	
+	<!--Download and unzip license-->
+	<target name="DownLoadUzipLicense">
+		<sshexec host="${samba.server.ip}" username="${samba.server.user}" password="${samba.server.passwd}" trust="true" outputproperty="licenselist" output="talend/licenselist.txt" command="find ${samba.server.ndir}/LICENSE_TEMP/${versionL}.1 -name 'licenses_*_30days*.zip' | sort -k 1r|head -n 1"/>
+		<loadfile srcfile="talend/licenselist.txt" property="license"/>
+		<scp file="${samba.server.user}:${samba.server.passwd}@${samba.server.ip}:${license}" trust="true" todir="talend" />
+		<loadfile srcfile="talend/licenselist.txt" property="licensename"/>
+		<propertyregex property="lname" input="${licensename}" regexp=".*/LICENSE_TEMP/.*/(.*).zip" select="\1"/>
+		<unzip src="talend/${lname}.zip" dest="talend" stripAbsolutePathSpec="true">
+			<patternset>
+				<include name="\${lname}/TP_ALL_*.license"/>
+			</patternset>
+		</unzip>
+		<exec executable="cmd" dir="talend/${lname}" outputproperty="filelist">
+			<arg value="/c" />
+			<arg value="dir"/>
+		</exec>  
+		<propertyregex property="ll" input="${filelist}" regexp=".*(TP_ALL.*.license).*" select="\1"/>
+		<echo>file:${ll}</echo>
+		<move file="talend/${lname}/${ll}" tofile="talend/license"/>
+		<!--Delete license related files-->
+		<delete includeEmptyDirs="true">  
+			<fileset dir="talend/${lname}"/>
+			<fileset dir="talend/" includes="${lname}.zip"/>
+			<fileset dir="talend/" includes="licenselist.txt"/>
+		</delete>
+	</target>
+	
+	<!--Set License for studio-->
+	<target name="SetLicense" description="copy license to studio...">
+		<trycatch>
+			<try>
+				<loadfile srcfile="talend/sname.txt" property="sname"></loadfile>
+				<echo>copy license to studio ${targetF}\${sname}...</echo>
+				<copy file="talend/license" todir="talend\${sname}"/>
+			</try>
+			<catch>
+				<echo>!!! Fail to set license</echo>
+			</catch>
+		</trycatch>
+	</target>
+	
+	<!--config connection.json file-->
+	<target name="Replace" description="config connection file...">
+		<echo>config connection file in talend/connection.json...</echo>
+		<trycatch>
+			<try>
+				<loadfile srcfile="talend/sname.txt" property="sname"></loadfile>
+				<copy file="settings/connection.json" tofile="talend/connection.json"/>
+				<replace file="talend/connection.json" token="RemoteUser" value="${tacUser}"/>
+				<replace file="talend/connection.json" token="RemotePwd" value="${tacPwd}"/>
+				<replace file="talend/connection.json" token="RemoteWK" value="${basedir}\talend\${sname}\workspace"/>
+				<replace file="talend/connection.json" token="/" value="\"/>
+				<replace file="talend/connection.json" token="\" value="\\"/>
+				<replace file="talend/connection.json" token="RemoteURL" value="${tacURL}"/>
+			</try>
+			<catch>
+				<echo>!!! Fail to generate connection info</echo>
+			</catch>
+		</trycatch>
+	</target>
+	
+	<!--add connection to studio-->
+	<target name="addConnection" description="add connection...">
+		<echo>add connection to studio from talend/connection.json...</echo>
+		<trycatch>
+			<try>
+				<loadfile srcfile="talend/sname.txt" property="sname"></loadfile>
+				<exec executable="cmd" vmlauncher="true">
+					<arg line="/c ${basedir}/talend/${sname}/Talend-Studio-win-x86_64.exe -nosplash -application org.talend.commandline.GenerateConnection -consoleLog -data talend/${sname}/commandline-workspace -f talend/connection.json" />  
+				</exec>         
+			</try>
+			<catch>
+				<echo>!!! Fail to add connection</echo>
+			</catch>
+		</trycatch>
+	</target>
+	
+	<!--Copy files for commandline script running-->
+	<target name="CopyScript">
+		<trycatch>
+			<try>
+				<loadfile srcfile="talend/sname.txt" property="sname"></loadfile>
+				<copy todir="talend\${sname}">
+					<fileset dir="cmdline/"/>
+				</copy>
+			</try>
+			<catch>
+				<echo>!!! Fail to set License</echo>
+			</catch>
+		</trycatch>
+	</target>
+	
+	<!--Update params of script file-->
+	<target name="ReplaceS">
+		<trycatch>
+			<try>
+				<loadfile srcfile="talend/sname.txt" property="sname"></loadfile>
+				<replace file="talend/${sname}/RunCase_local.script" token="JAVARUN" value="${JavaRUN}"/>
+				<replace file="talend/${sname}/RunCase_local.script" token="FOLDER" value="${basedir}/talend/${sname}"/>
+				<replace file="talend/${sname}/RunCase_local.script" token="\" value="/"/>
+			</try>
+			<catch>
+				<echo>!!! Fail to generate commandline script</echo>
+			</catch>
+		</trycatch>
+	</target>
+	
+	<!--Run command using commandline script-->
+	<target name="RunCmdline" description="commandline starting.....">
+		<trycatch>
+			<try>
+				<loadfile srcfile="talend/sname.txt" property="sname"></loadfile>
+				<exec executable="cmd" vmlauncher="false">
+					<arg line="/c ${basedir}/talend/${sname}/Talend-Studio-win-x86_64.exe -nosplash -application org.talend.commandline.CommandLine -consoleLog -data talend/${sname}/commandline-workspace scriptFile talend/${sname}/RunCase_local.script" />  
+				</exec>         
+			</try>
+			<catch>
+				<echo>!!! Fail to start commandLine</echo>
+			</catch>
+		</trycatch>
+	</target>
+	
+	<!--Execute Job from here-->
+	<target name="run">
+		<echo>download studio, unzip it to Folders:talend...</echo>
+		<antcall target="DownLoadUzipLicense"/>
+		<antcall target="DownloadUnzipStudio"/>
+        <antcall target="SetLicense"/>
+		<antcall target="Replace"/>
+		<if>
+		<or> 
+		<equals arg1="${sVersion}" arg2="6.5.1"/> 
+		<equals arg1="${versionF}" arg2="7"/>
+		</or>
+		<then>
+			<antcall target="addConnection"/>
+		</then>
+		</if>
+		<antcall target="CopyScript"/>
+		<antcall target="ReplaceS"/>
+        <antcall target="RunCmdline"/>
+	</target>
+</project>

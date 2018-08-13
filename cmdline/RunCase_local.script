@@ -1,0 +1,17 @@
+initLocal;
+createProject -pn testlocal -pa admin@compnay.com -pap admin -pl java -pd "test"
+logonProject -pn testlocal -ul admin@compnay.com;
+importItems FOLDER/test.zip;
+buildJob test -af test -dd FOLDER;
+executeJob test -i "JAVARUN";
+exportItems FOLDER/export.zip
+logoffProject
+
+
+
+
+
+
+
+
+

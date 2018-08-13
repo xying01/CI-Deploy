@@ -1,0 +1,38 @@
+Hi all,
+This is a new patch for TPS_NAME, fixed the issue:BUG_NAME
+Patch name : PATCH_NAME.zip
+More details of this patch as bellow:
+
+- Basic information
+||Patch Name||Target Version||Jira Issue||TPS ID||
+|PATCH_NAME.zip|20161216_1026-V6.3.1| BUG_NAME |TPS_NAME|
+
+- Check Part
+||Check Part||Result||
+|https://jira.talendforge.org/browse/BUG_NAME|OK|
+|Run case under testlink TestPlan:Patch 6.3.1 Build:TPS_NAME|OK|
+
+- Installation steps:
+--Install By Update from TAC(Studio)
+  1)Logon TAC and switch to Configuration->Software Update , fill correct value of it, save
+  2)Switch to Software update page, could see the new patch ,you can download patch from here (patch will store in nexus)
+  3)On Studio Side: Logon Studio with remote mode, at logon page could see Update button, click this button, install the patch
+--Install By Update from TAC(Commandline)
+  1)Execute command: Talend-Studio-win-x86_64.exe -nosplash -application org.talend.commandline.CommandLine -consoleLog -data commandline-workspace startServer -p 8002 --talendDebug
+  2)Execute command: initRemote \{tac_url} -ul \{TAC login username} -up \{TAC login password}
+  3)Execute command: checkAndUpdate -tu \{TAC login username} -tup \{TAC login password}
+--Install patch manually without TAC (only support after 621 versions)
+  1)create folder which named "patches" under your studio installer directory and copy patch .zip file to this folder
+  2)restart your studio,will popup up prompt window at first time and then click ok button to install the patch, or restart commandline, patch will be installed automatically.
+
+- Patch locations
+||Patch System||Patch Name||
+|https://patch.talend.com|PATCH_NAME.zip|
+||R&D Server||location||
+|192.168.34.50|\\192.168.34.50\public\patches\Validated\6.3.1\GUI|
+
+Thanks
+QA_DI/UP Team
+
+
+

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="CommandLineTest" default="run" basedir=".">
+	<property file="settings/ant.properties" />
+	<taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
+	<!--Get Studio name by version -->
+	<switch value="${sVersion}">
+		<case value="6.2.1">
+			<property name="Studio" value="Talend-Studio-20160704_1411-V6.2.1" />
+		</case>
+		<case value="6.3.1">
+			<property name="Studio" value="Talend-Studio-20161216_1026-V6.3.1" />
+		</case>
+		<case value="6.4.1">
+			<property name="Studio" value="Talend-Studio-20170623_1246-V6.4.1" />
+		</case>
+		<case value="6.5.1">
+			<property name="Studio" value="Talend-Studio-20180116_1512-V6.5.1" />
+		</case>
+		<case value="7.0.1">
+			<property name="Studio" value="Talend-Studio-20180411_1414-V7.0.1" />
+		</case>
+		<default>
+			<echo message="Please check the value of the switch.value:${sVersion}, it can not match to version." />
+		</default>
+	</switch>
+	
+	<!--Copy files for commandline script running-->
+	<target name="CopyScript">
+		<trycatch>
+			<try>
+				<copy todir="${targetF}\${Studio}">
+					<fileset dir="cmdline/"/>
+				</copy>
+			</try>
+			<catch>
+				<echo>!!! Fail to set License</echo>
+			</catch>
+		</trycatch>
+	</target>
+	
+	<!--Update params of script file-->
+	<target name="Replace">
+		<trycatch>
+			<try>
+				<replace file="${targetF}/${Studio}/RunCase.script" token="TACURL" value="${tacURL}"/>
+				<replace file="${targetF}/${Studio}/RunCase.script" token="JAVARUN" value="${JavaRUN}"/>
+				<replace file="${targetF}/${Studio}/RunCase.script" token="FOLDER" value="${basedir}/${targetF}/${Studio}"/>
+				<replace file="${targetF}/${Studio}/RunCase.script" token="TACUSER" value="${tacUser}"/>
+				<replace file="${targetF}/${Studio}/RunCase.script" token="TACPWD" value="${tacPwd}"/>
+				<replace file="${targetF}/${Studio}/RunCase.script" token="\" value="/"/>
+			</try>
+			<catch>
+				<echo>!!! Fail to generate commandline script</echo>
+			</catch>
+		</trycatch>
+	</target>
+	
+	<!--Run command using commandline script-->
+	<target name="RunCmdline" description="commandline starting.....">
+		<trycatch>
+			<try>
+				<exec executable="cmd" vmlauncher="false">
+					<arg line="/c ${basedir}/${targetF}/${Studio}/Talend-Studio-win-x86_64.exe -nosplash -application org.talend.commandline.CommandLine -consoleLog -data ${targetF}/${Studio}/commandline-workspace scriptFile ${targetF}/${Studio}/RunCase.script" />  
+				</exec>         
+			</try>
+			<catch>
+				<echo>!!! Fail to start commandLine</echo>
+			</catch>
+		</trycatch>
+	</target>
+	
+	<!--Execute Job from here-->
+	<target name="run">
+		<antcall target="CopyScript"/>
+		<antcall target="Replace"/>
+		<antcall target="RunCmdline"/>
+	</target>
+</project>

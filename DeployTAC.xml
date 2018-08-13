@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="deployTAC" default="run" basedir=".">
+	<property file="settings/ant.properties" />
+	<taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
+	<!--Get version -->
+	<propertyregex property="sVersion" input="${buildVersion}" regexp="(.*)_." select="\1"/>
+	<!--Get type:r(release)/n(nigthly) -->
+	<propertyregex property="bType" input="${buildVersion}" regexp=".*_(.)" select="\1"/>
+	<!--Get first number of version -->
+	<propertyregex property="versionF" input="${sVersion}" regexp="[5-9]" select="\0"/>
+	<!-- set the operating system test properties -->  
+	<condition property="isMac">  
+		<os family="mac" />  
+	</condition>  
+	<condition property="isWindows">  
+		<os family="windows" />  
+	</condition>  
+	<condition property="isUnix">  
+		<os family="unix" />  
+	</condition>  
+  
+	<!-- define the operating system specific targets -->  
+	<target name="doMac" if="isMac">  
+		<echo message="Mac isn't supported,Pleas use Windows" />  
+		<!-- do whatever you want to do here for Mac systems -->  
+	</target>  
+	<target name="doUnix" if="isUnix">  
+		<echo message="Unix isn't supported,Pleas use Windows" />  
+	</target> 
+	<target name="doWindows" if="isWindows">  
+		<!--Create file under "C:/Windows/System32/" to check if jenkins has the administrator permission-->
+		<echo append="false" file="C:/Windows/System32/shuzhen.txt">test</echo>
+		<!--if shuzhen.txt is created, jenkins has administrator permission. otherwise jenkins doesn't have administrator permission-->
+		<if>
+		<available file="C:/Windows/System32/shuzhen.txt"/> 
+		<then>
+			<ant dir="." antfile="Clean.xml"/>
+			<if>
+			<equals arg1="${bType}" arg2="r"/> 
+			<then>
+				<ant dir="." antfile="DeployPatchTesting.xml"/>
+			</then>
+			<else>
+				<ant dir="." antfile="DeployNightlyTesting.xml"/>
+			</else>
+			</if>
+		</then>
+		<else>
+			<!--if jenkins doesn't have administrator permission, it won't allow deploy anything-->
+			<echo> Please run Jenkin using Administrator </echo>
+		</else>
+		</if> 
+	</target>  
+	<!-- define our main/default target -->  
+	<target name="run" depends="doMac, doWindows, doUnix">  
+		<echo message="Start Deploy..." />  
+	</target>    
+</project>

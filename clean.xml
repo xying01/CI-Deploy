@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="CleanTAC" default="run" basedir=".">
+	<property file="settings/ant.properties" />
+	<taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
+	
+	<!--getServiceList-->
+	<target name="getServiceList" description="tomcat stopping...">
+		<trycatch>
+			<try>
+				<exec executable="cmd" vmlauncher="false">  
+					<arg line="/c sc query>talend/servicelist.txt" />  
+				</exec> 				
+			</try>
+			<catch>
+				<echo>!!! Fail to get Service list</echo>
+			</catch>
+		</trycatch>
+	</target>
+	
+	<!--Params for deleting Projects:testsvn,testgit,testsvnr,testgitr-->
+	<target name="CleanProject" depends="getServiceList">
+		<trycatch>
+		<try>
+		<loadfile srcfile="talend/servicelist.txt" property="services"></loadfile>
+		<if>
+		<contains string="${services}" substring="SERVICE_NAME: tomcatD"/>
+		<then>
+			<if>
+			<equals arg1="${versionF}" arg2="7"/> 
+			<then>
+				<antcall target="metaservlet">
+					<param name="json.params" value="{'actionName':'deleteProject','addTechNameAtURL':true,'authPass':'${tacPwd}','authUser':'${tacUser}','projectName':'testsvn','deleteContentsInRepository':'true'}" />
+				</antcall>
+				<antcall target="metaservlet">
+					<param name="json.params" value="{'actionName':'deleteProject','addTechNameAtURL':true,'authPass':'${tacPwd}','authUser':'${tacUser}','projectName':'testgit','deleteContentsInRepository':'true'}" />
+				</antcall>
+				<antcall target="metaservlet">
+					<param name="json.params" value="{'actionName':'deleteProject','addTechNameAtURL':true,'authPass':'${tacPwd}','authUser':'${tacUser}','projectName':'testsvnr','deleteContentsInRepository':'true'}" />
+				</antcall>
+				<antcall target="metaservlet">
+					<param name="json.params" value="{'actionName':'deleteProject','addTechNameAtURL':true,'authPass':'${tacPwd}','authUser':'${tacUser}','projectName':'testgitr','deleteContentsInRepository':'true'}" />
+				</antcall>
+			</then>
+			<else>
+				<antcall target="metaservlet">
+					<param name="json.params" value="{'actionName':'deleteProject','addTechNameAtURL':true,'authPass':'${tacPwd}','authUser':'${tacUser}','projectName':'testsvn'}" />
+				</antcall>
+				<antcall target="metaservlet">
+					<param name="json.params" value="{'actionName':'deleteProject','addTechNameAtURL':true,'authPass':'${tacPwd}','authUser':'${tacUser}','projectName':'testgit'}" />
+				</antcall>
+				<antcall target="metaservlet">
+					<param name="json.params" value="{'actionName':'deleteProject','addTechNameAtURL':true,'authPass':'${tacPwd}','authUser':'${tacUser}','projectName':'testsvnr'}" />
+				</antcall>
+				<antcall target="metaservlet">
+					<param name="json.params" value="{'actionName':'deleteProject','addTechNameAtURL':true,'authPass':'${tacPwd}','authUser':'${tacUser}','projectName':'testgitr'}" />
+				</antcall>
+			</else>
+			</if>
+		</then>
+		<else>
+			<echo>!!! TAC isn't started</echo>
+		</else>
+		</if>
+		</try>
+		<catch>
+			<echo>!!! Fail to Clean Project</echo>
+		</catch>
+		</trycatch>
+	</target>
+	
+	<!--stop stopServices:tomcat,nexus2,nexus3-->
+	<target name="stopServices" description="tomcat stopping..." depends="CleanProject">
+		<trycatch>
+			<try>
+				<loadfile srcfile="talend/servicelist.txt" property="services"></loadfile>
+				<if>
+				<contains string="${services}" substring="SERVICE_NAME: tomcatD"/>
+				<then>
+					<exec executable="cmd" vmlauncher="false">  
+						<arg line="/c net stop tomcatD" />  
+					</exec> 
+					<exec executable="cmd" vmlauncher="false">
+						<env key="CATALINA_HOME" value="${basedir}/talend/tomcat8" /> 
+						<env key="CATALINA_BASE" value="${basedir}/talend/tomcat8" />
+						<arg line="/c ${basedir}/talend/tomcat8/bin/service.bat remove tomcatD" />  
+					</exec> 				
+				</then>
+				</if>
+				<if>
+				<contains string="${services}" substring="SERVICE_NAME: nexus3"/>
+				<then>
+					<exec executable="cmd" vmlauncher="true">  
+						<arg line="/c net stop nexus3" />  
+					</exec>
+					<exec executable="cmd" vmlauncher="false">  				
+						<arg line="/c ${basedir}\talend\nexus3\nexus\bin\nexus.exe -uninstall nexus3" />  
+					</exec>					
+				</then>
+				</if>
+				<if>
+				<contains string="${services}" substring="SERVICE_NAME: nexus-webapp"/>
+				<then>
+					<exec executable="cmd" vmlauncher="false"> 
+						<arg line="/c ${basedir}\talend\nexus2\nexus\bin\nexus.bat stop" />  				
+					</exec>			
+					<exec executable="cmd" vmlauncher="false">  				
+						<arg line="/c ${basedir}\talend\nexus2\nexus\bin\nexus.bat uninstall" />  
+					</exec>  				
+				</then>
+				</if>				
+			</try>
+			<catch>
+				<echo>!!! Fail to stop all services</echo>
+			</catch>
+		</trycatch>
+	</target>	
+	
+	<!--clean files in tomcat-->
+	<target name="CleanFolder" depends="stopServices">
+		<trycatch>
+			<try>
+				<delete includeEmptyDirs="true">  
+					<fileset dir="talend" includes="**/*" defaultexcludes="false"/>			
+				</delete>
+			</try>
+			<catch>
+				<echo>!!! Fail to clean Files</echo>
+			</catch>
+		</trycatch>
+	</target>
+	
+	<!--Use metaservlet to control tac -->
+	<target name="metaservlet">
+		<echo>Execute: MetaServletCaller.bat -tac-url=${tacURL} -json-params=${json.params}</echo>
+		<exec executable="cmd" dir="talend/tomcat8/webapps/tac/WEB-INF/classes/">
+			<arg value="/c" />
+			<arg value="MetaServletCaller.bat"/>
+			<arg value="-url"/>
+			<arg value="${tacURL}"/>
+			<arg value="-json-params=${json.params}"/>
+		</exec>        
+	</target>
+	
+	<!--Execute deploy job from here-->
+	<target name="run">
+		<echo>Clean ${basedir}\talend --</echo>
+		<antcall target="CleanFolder"/>
+	</target>
+</project>

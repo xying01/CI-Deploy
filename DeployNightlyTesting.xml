@@ -1,0 +1,376 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="deployTAC" default="run" basedir=".">
+	<taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
+	<!--Get first number of version -->
+	<propertyregex property="versionL" input="${sVersion}" regexp="[5-9].[0-9]" select="\0"/>	
+	<!--Copy tomcat from server-->
+	<target name="downloadUzipTomcat" >
+		<trycatch>
+			<try>
+			<if>
+			<not>
+				<available file="talend/lastErrorStatus.txt"/> 
+			</not>
+			<then>			
+				<scp file="${samba.server.user}:${samba.server.passwd}@${samba.server.ip}:${samba.server.dir}/tomcat/tomcat8.zip" trust="true" todir="talend" />
+				<unzip src="talend/tomcat8.zip" dest="talend/"></unzip>
+				<delete includeEmptyDirs="true">
+					<fileset dir="talend/" includes="tomcat8.zip"/>
+				</delete>
+			</then>
+			<else>
+				<echo>Not Run</echo>
+			</else>
+			</if>
+			</try>
+			<catch>
+				<echo file="talend/lastErrorStatus.txt">downloadUzipTomcat:Fail</echo>
+				<echo>!!! Fail to download and unzip tomcat from samba</echo>
+			</catch>
+		</trycatch>
+	</target>
+	
+	<!--Download and unzip Nexus-->
+	<target name="downloadUzipNexus" >
+		<trycatch>
+			<try>
+			<if>
+			<not>
+				<available file="talend/lastErrorStatus.txt"/> 
+			</not>
+			<then>
+				<!--Copy Nexus-->
+				<scp file="${samba.server.user}:${samba.server.passwd}@${samba.server.ip}:${samba.server.dir}/nexus/nexus2.zip" trust="true" todir="talend" />
+				<!--Unzip Nexus-->
+				<unzip src="talend/nexus2.zip" dest="talend/"></unzip>
+				<if>
+				<equals arg1="${versionF}" arg2="7"/> 
+				<then>
+					<scp file="${samba.server.user}:${samba.server.passwd}@${samba.server.ip}:${samba.server.dir}/nexus/nexus3.zip" trust="true" todir="talend" />
+					<!--Unzip Nexus-->
+					<unzip src="talend/nexus3.zip" dest="talend/"></unzip>
+				</then>
+				</if>
+			</then>
+			<else>
+				<echo>Not Run</echo>
+			</else>
+			</if>
+			</try>
+			<catch>
+				<echo file="talend/lastErrorStatus.txt">downloadUzipNexus:Fail</echo>			
+				<echo>!!! Fail to download and unzip nexus from samba</echo>
+			</catch>
+		</trycatch>
+	</target>
+	
+	<!--Download and unzip tac-->
+	<target name="downloadUzipTAC">
+	<trycatch>
+		<try>
+		<if>
+		<not>
+			<available file="talend/lastErrorStatus.txt"/> 
+		</not>
+		<then>
+			<sshexec host="${samba.server.ip}" username="${samba.server.user}" password="${samba.server.passwd}" trust="true" outputproperty="taclist" output="talend/taclist.txt" command="find ${samba.server.ndir}/ -name 'Talend-AdministrationCenter*V${sVersion}SNAPSHOT.zip'| sort -k 1r|head -n 1"/>
+			<loadfile srcfile="talend/taclist.txt" property="tac"/>
+			<scp file="${samba.server.user}:${samba.server.passwd}@${samba.server.ip}:${tac}" trust="true" todir="talend" />
+			<propertyregex property="tname" input="${tac}" regexp=".*/all_.*/(.*).zip" select="\1"/>
+			<unzip src="talend/${tname}.zip" dest="talend"></unzip>
+			<!--create tac folder in tomcat/webapps-->
+			<mkdir dir="talend/tomcat8/webapps/tac"/>
+			<!--Unzip tac to tac folder in tomcat/webapps-->
+			<unzip dest="talend/tomcat8/webapps/tac">
+				<fileset dir="talend/${tname}">
+					<include name="**/org.talend.administrator*.war"/>
+				</fileset>
+			</unzip>
+			<delete includeEmptyDirs="true">
+				<fileset dir="talend/${tname}"/>
+				<fileset dir="talend/" includes="${tname}.zip"/>
+				<fileset dir="talend/" includes="taclist.txt"/>
+			</delete>
+		</then>
+		<else>
+			<echo>Not Run</echo>
+		</else>
+		</if>
+		</try>
+		<catch>
+			<echo file="talend/lastErrorStatus.txt">downloadUzipTAC:Fail</echo>			
+			<echo>!!! Fail to download and unzip tac</echo>
+		</catch>
+	</trycatch>
+	</target>
+	
+	<!--Download and unzip license-->
+	<target name="DownLoadUzipLicense">
+	<trycatch>
+		<try>
+		<if>
+		<not>
+			<available file="talend/lastErrorStatus.txt"/> 
+		</not>
+		<then>
+			<sshexec host="${samba.server.ip}" username="${samba.server.user}" password="${samba.server.passwd}" trust="true" outputproperty="licenselist" output="talend/licenselist.txt" command="find ${samba.server.ndir}/LICENSE_TEMP/${versionL}.1 -name 'licenses_*_30days*.zip' | sort -k 1r|head -n 1"/>
+			<loadfile srcfile="talend/licenselist.txt" property="license"/>
+			<scp file="${samba.server.user}:${samba.server.passwd}@${samba.server.ip}:${license}" trust="true" todir="talend" />
+			<loadfile srcfile="talend/licenselist.txt" property="licensename"/>
+			<propertyregex property="lname" input="${licensename}" regexp=".*/LICENSE_TEMP/.*/(.*).zip" select="\1"/>
+			<!--Unzip license-->
+			<unzip src="talend/${lname}.zip" dest="talend" stripAbsolutePathSpec="true">
+				<patternset>
+					<include name="\${lname}/TP_ALL_*.license"/>
+				</patternset>
+			</unzip>
+			<exec executable="cmd" dir="talend/${lname}" outputproperty="filelist">
+				<arg value="/c" />
+				<arg value="dir"/>
+			</exec>  
+			<propertyregex property="ll" input="${filelist}" regexp=".*(TP_ALL.*.license).*" select="\1"/>
+			<move file="talend/${lname}/${ll}" tofile="talend/license"/>
+			<delete includeEmptyDirs="true">  
+				<fileset dir="talend/${lname}"/>
+				<fileset dir="talend/" includes="${lname}.zip"/>
+				<fileset dir="talend/" includes="licenselist.txt"/>
+			</delete>
+		</then>
+		<else>
+			<echo>Not Run</echo>
+		</else>
+		</if>
+		</try>
+		<catch>
+			<echo file="talend/lastErrorStatus.txt">DownLoadUzipLicense:Fail</echo>	
+			<echo>!!! Fail to download and unzip license</echo>
+		</catch>
+	</trycatch>
+	</target>
+	
+	<!--set license for tac-->
+	<target name="setLicense" depends="downloadUzipTAC,DownLoadUzipLicense,downloadUzipTomcat">
+		<trycatch>
+			<try>
+			<if>
+			<not>
+				<available file="talend/lastErrorStatus.txt"/> 
+			</not>
+			<then>
+				<loadfile srcfile="talend/license" property="licensekey"></loadfile>
+				<echo append="false" file="talend/tomcat8/webapps/tac/WEB-INF/classes/install.txt">license.key=${licensekey}</echo>
+			</then>
+			<else>
+				<echo>Not Run</echo>
+			</else>
+			</if>
+			</try>
+			<catch>
+				<echo file="talend/lastErrorStatus.txt">setLicense:Fail</echo>	
+				<echo>!!! Fail to set license</echo>
+			</catch>
+		</trycatch>
+	</target>
+	
+	<!--select configuration properties for tac-settings-Configuration -->
+	<target name="setConfig" depends="setLicense">
+		<trycatch>
+			<try>
+			<if>
+			<not>
+				<available file="talend/lastErrorStatus.txt"/> 
+			</not>
+			<then>
+				<!--by default, use configuration.properties-->
+				<property name="configFile" value="configuration.properties" />
+				<!--if version equals 70, use configuration70.properties-->
+				<if>
+					<equals arg1="${versionF}" arg2="7"/> 
+					<then>
+						<var name="configFile" value="configuration70.properties" />
+					</then>
+				</if>
+				<echo>${configFile}</echo>
+				<copy file ="settings/${configFile}" tofile="talend/tomcat8/webapps/tac/WEB-INF/classes/configuration.properties" overwrite="true"/> 
+			</then>
+			<else>
+				<echo>Not Run</echo>
+			</else>
+			</if>
+			</try>
+			<catch>
+				<echo file="talend/lastErrorStatus.txt">setConfig:Fail</echo>				
+				<echo>!!! Fail to copy configuration.properties</echo>
+			</catch>
+		</trycatch>
+	</target>	
+	
+	<!--start tomcat, deploy tac-->
+	<target name="startTac" description="tomcat starting....." depends="setConfig">
+		<trycatch>
+			<try>
+			<if>
+			<not>
+				<available file="talend/lastErrorStatus.txt"/> 
+			</not>
+			<then>
+				<exec executable="cmd" vmlauncher="true">  
+					<env key="CATALINA_HOME" value="${basedir}/talend/tomcat8" />  
+					<env key="CATALINA_BASE" value="${basedir}/talend/tomcat8" /> 
+					<arg line="/c ${basedir}/talend/tomcat8/bin/service.bat install tomcatD" />  
+				</exec> 
+				<exec executable="cmd" vmlauncher="true">  
+					<arg line="/c net start tomcatD" />  
+				</exec>
+				<echo>tac has been deploy successfully, please access:${tacURL}</echo>
+			</then>
+			<else>
+				<echo>Not Run</echo>
+			</else>
+			</if>
+			</try>
+			<catch>
+				<echo file="talend/lastErrorStatus.txt">startTac:Fail</echo>				
+				<echo>!!! Fail to start Tac</echo>
+			</catch>
+		</trycatch>
+	</target>
+	
+	<!--start nexus service-->
+	<target name="startNexus" description="start Nexus..." depends="downloadUzipNexus">
+		<trycatch>
+			<try>
+			<if>
+			<not>
+				<available file="talend/lastErrorStatus.txt"/> 
+			</not>
+			<then>
+				<exec executable="cmd" vmlauncher="false"> 
+					<arg line="/c ${basedir}\talend\nexus2\nexus\bin\nexus.bat install" />  				
+				</exec>
+				<exec executable="cmd" vmlauncher="false">  				
+					<arg line="/c ${basedir}\talend\nexus2\nexus\bin\nexus.bat start" />  
+				</exec> 
+				<echo>nexus2 has been deploy successfully, please access:http://localhost:8081/nexus</echo>
+				<if>
+				<equals arg1="${versionF}" arg2="7"/> 
+				<then>
+					<exec executable="cmd" vmlauncher="false">  				
+						<arg line="/c ${basedir}\talend\nexus3\nexus\bin\nexus.exe -install nexus3" />  
+					</exec>
+					<exec executable="cmd" vmlauncher="true">  
+						<arg line="/c net start nexus3" />  
+					</exec>
+					<echo>nexus3 has been deploy successfully, please access:http://localhost:8082/</echo>
+				</then>
+				</if>
+			</then>
+			<else>
+				<echo>Not Run</echo>
+			</else>
+			</if>
+			</try>
+			<catch>
+				<echo file="talend/lastErrorStatus.txt">startNexus:Fail</echo>				
+				<echo>!!! Fail to start Nexus</echo>
+			</catch>
+		</trycatch>
+	</target>
+	
+	<!--Params for creating user,projects,authorization,reference in metaservlet-->
+	<target name="remote_project_commands" depends="startTac">
+		<trycatch>
+			<try>
+			<if>
+			<not>
+				<available file="talend/lastErrorStatus.txt"/> 
+			</not>
+			<then>
+				<echo>Run command in metaservlet---</echo>
+				<!--Create User-->
+				<antcall target="metaservlet">
+					<param name="json.params" value="{'actionName':'createUser','authPass':'admin','authUser':'security@company.com','count_policy':'NAMED','userFirstName':'usesrFirstName_FN','userLastName':'userLastName_LN','userLogin':'${tacUser}','userPassword':'${tacPwd}','userRole':['Security Administrator','Administrator','Designer','Viewer','Operation manager'],'userSvnLogin':'${svnlogin}','userSvnPassword':'${svnpwd}','userGitLogin':'${gitlogin}','userGitPassword':'${gitpwd}','userType':'MDM'}" />
+				</antcall>
+				<!--Create Projects:testsvn,testgit,testsvnr,testgitr-->
+				<antcall target="metaservlet">
+					<param name="json.params" value="{'actionName':'createProject','addTechNameAtURL':true,'authPass':'${tacPwd}','authUser':'${tacUser}','projectName':'testsvn','storage':'svn','projectSvnLocation':'${svnurl}','svnLogin':'${svnlogin}','svnPassword':'${svnpwd}'}" />
+				</antcall>
+				<antcall target="metaservlet">
+					<param name="json.params" value="{'actionName':'createProject','addTechNameAtURL':true,'authPass':'${tacPwd}','authUser':'${tacUser}','projectName':'testgit','storage':'git','projectGitLocation':'${giturl}','gitLogin':'${gitlogin}','gitPassword':'${gitpwd}'}" />
+				</antcall>
+				<antcall target="metaservlet">
+					<param name="json.params" value="{'actionName':'createProject','addTechNameAtURL':true,'authPass':'${tacPwd}','authUser':'${tacUser}','projectName':'testsvnr','storage':'svn','projectSvnLocation':'${svnurl}','svnLogin':'${svnlogin}','svnPassword':'${svnpwd}'}" />
+				</antcall>
+				<antcall target="metaservlet">
+					<param name="json.params" value="{'actionName':'createProject','addTechNameAtURL':true,'authPass':'${tacPwd}','authUser':'${tacUser}','projectName':'testgitr','storage':'git','projectGitLocation':'${giturl}','gitLogin':'${gitlogin}','gitPassword':'${gitpwd}'}" />
+				</antcall>
+				<!--Create Authorization:${tacUser}(testsvn:testsvnr,testgit:testgitr)-->
+				<antcall target="metaservlet">
+					<param name="json.params" value="{'actionName':'createAuthorization','authPass':'${tacPwd}','authUser':'${tacUser}','authorizationType':'ReadWrite','projectName':'testsvn','userLogin':'${tacUser}'}" />
+				</antcall>
+				<antcall target="metaservlet">
+					<param name="json.params" value="{'actionName':'createAuthorization','authPass':'${tacPwd}','authUser':'${tacUser}','authorizationType':'ReadWrite','projectName':'testgit','userLogin':'${tacUser}'}" />
+				</antcall>
+				<antcall target="metaservlet">
+					<param name="json.params" value="{'actionName':'createAuthorization','authPass':'${tacPwd}','authUser':'${tacUser}','authorizationType':'ReadWrite','projectName':'testsvnr','userLogin':'${tacUser}'}" />
+				</antcall>
+				<antcall target="metaservlet">
+					<param name="json.params" value="{'actionName':'createAuthorization','authPass':'${tacPwd}','authUser':'${tacUser}','authorizationType':'ReadWrite','projectName':'testgitr','userLogin':'${tacUser}'}" />
+				</antcall>
+				<!--if version doesn't equal 70,Create Projects Reference:testsvn-testsvnr,testgit-testgitr-->
+				<if>
+				<not>
+					<equals arg1="${versionF}" arg2="7"/> 
+				</not>
+				<then>
+					<antcall target="metaservlet">
+						<param name="json.params" value="{'actionName':'createProjectReference','authPass':'${tacPwd}','authUser':'${tacUser}','branch':'trunk','projectName':'testsvn','referenceProjects':'TESTSVNR/trunk'}" />
+					</antcall>
+					<antcall target="metaservlet">
+						<param name="json.params" value="{'actionName':'createProjectReference','authPass':'${tacPwd}','authUser':'${tacUser}','branch':'master','projectName':'testgit','referenceProjects':'TESTGITR/master'}" />
+					</antcall>
+				</then>
+			</if>
+			</then>
+			<else>
+				<echo>Not Run</echo>
+			</else>
+			</if>
+			</try>
+			<catch>
+				<echo file="talend/lastErrorStatus.txt">startNexus:Fail</echo>				
+				<echo>!!! Fail to execute remote_project_commands</echo>
+			</catch>
+		</trycatch>
+	</target>
+	
+	<!--Use metaservlet to control tac -->
+	<target name="metaservlet">
+		<echo>Execute: MetaServletCaller.bat -tac-url=${tacURL} -json-params=${json.params}</echo>
+		<exec executable="cmd" dir="talend/tomcat8/webapps/tac/WEB-INF/classes/">
+			<arg value="/c" />
+			<arg value="MetaServletCaller.bat"/>
+			<arg value="-url"/>
+			<arg value="${tacURL}"/>
+			<arg value="-json-params=${json.params}"/>
+		</exec>        
+	</target>
+	
+	<!--Execute deploy job from here-->
+	<target name="run">
+		<if>
+		<available file="talend/lastErrorStatus.txt"/> 
+		<then>
+			<delete file="talend/lastErrorStatus.txt"/>		
+		</then>
+		</if>
+		<!--Create shuzhen.txt under "C:/Windows/System32/" to check if jenkins has the administrator permission-->
+		<echo append="false" file="C:/Windows/System32/shuzhen.txt">test</echo>
+		<!--if shuzhen.txt is created, jenkins has administrator permission. otherwise jenkins doesn't have administrator permission-->
+		<!--Delete shuzhen.txt under "C:/Windows/System32/"-->
+		<delete file="C:/Windows/System32/shuzhen.txt"/>
+		<!--Start to Deploy-->
+		<antcall target="remote_project_commands"/>
+		<antcall target="startNexus"/>
+	</target>
+</project>

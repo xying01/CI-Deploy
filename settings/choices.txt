@@ -1,0 +1,9 @@
+BuildType	Version	
+Release	6.1.1_r
+Release	6.2.1_r
+Release	6.3.1_r
+Release	6.4.1_r
+Release	6.5.1_r
+Release	7.0.1_r
+Nightly	7.0.2_n
+Nightly	7.1.1_n

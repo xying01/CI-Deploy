@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="ReadyStudio" default="run" basedir=".">
+	<property file="settings/ant.properties" />
+	<taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
+	<!--Get first number of version -->
+	<propertyregex property="versionF" input="${sVersion}" regexp="[5-9]" select="\0"/>
+	<!--Get Studio name by version -->
+	<switch value="${sVersion}">
+		<case value="6.2.1">
+			<property name="Studio" value="Talend-Studio-20160704_1411-V6.2.1" />
+		</case>
+		<case value="6.3.1">
+			<property name="Studio" value="Talend-Studio-20161216_1026-V6.3.1" />
+		</case>
+		<case value="6.4.1">
+			<property name="Studio" value="Talend-Studio-20170623_1246-V6.4.1" />
+		</case>
+		<case value="6.5.1">
+			<property name="Studio" value="Talend-Studio-20180116_1512-V6.5.1" />
+		</case>
+		<case value="7.0.1">
+			<property name="Studio" value="Talend-Studio-20180411_1414-V7.0.1" />
+		</case>
+		<default>
+			<echo message="Please check the value of the switch.value:${sVersion}, it can not match to version." />
+		</default>
+	</switch>
+	
+	<!--download studio-->
+	<target name="downloadStudio" description="download studio to ${basedir}/talend...">
+		<echo>download studio to ${basedir}/talend...${Studio}</echo>
+		<if>
+			<not>
+			<available file="talend/${Studio}.zip"/>
+			</not>
+			<then>
+				<trycatch>
+					<try>
+						<scp file="${samba.server.user}:${samba.server.passwd}@${samba.server.ip}:${samba.server.dir}/${sVersion}/${Studio}.zip" trust="true" todir="talend" />
+					</try>
+					<catch>
+						<echo>!!! Fail to download studio from samba</echo>
+					</catch>
+				</trycatch>
+			</then>
+		</if>
+	</target>
+	
+	<!--uzip Studio-->
+	<target name="uzip_Studio" description="unzip studio to target folder...">
+		<echo>unzip studio to ${targetF}...</echo>
+		<trycatch>
+			<try>
+				<mkdir dir="${targetF}" />
+				<unzip src="talend/${Studio}.zip" dest="${targetF}"></unzip>
+			</try>
+			<catch>
+				<echo>!!! Fail to unzip studio</echo>
+			</catch>
+		</trycatch>
+	</target>
+	<target name="SetLicense" description="copy license to studio...">
+		<echo>copy license to studio ${targetF}\${Studio}...</echo>
+		<trycatch>
+			<try>
+				<copy file="talend/license" todir="${targetF}\${Studio}"/>
+			</try>
+			<catch>
+				<echo>!!! Fail to set license</echo>
+			</catch>
+		</trycatch>
+	</target>
+	
+	<!--config connection.json file-->
+	<target name="Replace" description="config connection file...">
+		<echo>config connection file in ${targetF}/connection.json...</echo>
+		<trycatch>
+			<try>
+				<copy file="settings/connection.json" tofile="${targetF}/connection.json"/>
+				<replace file="${targetF}/connection.json" token="RemoteUser" value="${tacUser}"/>
+				<replace file="${targetF}/connection.json" token="RemotePwd" value="${tacPwd}"/>
+				<replace file="${targetF}/connection.json" token="RemoteWK" value="${basedir}\${targetF}\${Studio}\workspace"/>
+				<replace file="${targetF}/connection.json" token="/" value="\"/>
+				<replace file="${targetF}/connection.json" token="\" value="\\"/>
+				<replace file="${targetF}/connection.json" token="RemoteURL" value="${tacURL}"/>
+			</try>
+			<catch>
+				<echo>!!! Fail to generate connection info</echo>
+			</catch>
+		</trycatch>
+	</target>
+	
+	<!--add connection to studio-->
+	<target name="addConnection" description="add connection...">
+		<echo>add connection to studio from ${targetF}/connection.json...</echo>
+		<trycatch>
+			<try>
+				<echo>"/c ${targetF}/${Studio}/Talend-Studio-win-x86_64.exe -nosplash -application org.talend.commandline.GenerateConnection -consoleLog -data ${targetF}/${Studio}/commandline-workspace -f ${targetF}/connection.json"</echo>
+				<exec executable="cmd" vmlauncher="true">
+					<arg line="/c ${basedir}/${targetF}/${Studio}/Talend-Studio-win-x86_64.exe -nosplash -application org.talend.commandline.GenerateConnection -consoleLog -data ${targetF}/${Studio}/commandline-workspace -f ${targetF}/connection.json" />  
+				</exec>         
+			</try>
+			<catch>
+				<echo>!!! Fail to add connection</echo>
+			</catch>
+		</trycatch>
+	</target>
+	
+	<!--Execute Job from here-->
+	<target name="run">
+			<echo>download studio, unzip it to Folders:${targetFs}...</echo>
+			<antcall target="downloadStudio"/>
+            <foreach list="${targetFs}" target="readystudio" param="targetF" delimiter=",">   
+            </foreach>
+	</target>
+	
+	<!--unzip,set license, config connection file, add connection-->
+	<target name="readystudio" description="studio in target folder...">
+		<echo>--unzip,set license, config connection file, add connection for ${targetF}\${Studio}...</echo>
+		<antcall target="uzip_Studio"/>
+		<antcall target="SetLicense"/>
+		<antcall target="Replace"/>
+		<if>
+			<or> 
+			<equals arg1="${sVersion}" arg2="6.5.1"/> 
+			<equals arg1="${versionF}" arg2="7"/>
+			</or>
+			<then>
+				<antcall target="addConnection"/>
+			</then>
+		</if>
+	</target>
+</project>

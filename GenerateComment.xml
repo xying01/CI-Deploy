@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="GenerateComment" default="run" basedir=".">
+	<taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
+	
+	<!--Generate Comment in JIRA from templete -->
+	<target name="JIRAComment">
+		<trycatch>
+			<try>
+				<copy file="templetes/jira/${version}.txt" tofile="talend/${version}jira.txt"/>
+				<replace file="talend/${version}jira.txt" token="TPS_NAME" value="${tpsname}"/>
+				<replace file="talend/${version}jira.txt" token="BUG_NAME" value="${bugname}"/>
+				<replace file="talend/${version}jira.txt" token="PATCH_NAME" value="${patchname}"/>
+				<loadfile srcfile="talend/${version}jira.txt" property="comment"></loadfile>
+				<echo>Patch comment in jira has been generated to ${basedir}/talend/${version}jira.txt.....</echo>
+				<echo>You can use it to Add comment in https://jira.talendforge.org/browse/${tpsname}... </echo>
+				<echo>${comment}</echo>
+			</try>
+			<catch>
+				<echo>!!! Fail to generate jira Comment</echo>
+			</catch>
+		</trycatch>
+	</target>
+	
+	<!--Generate Comment in community from templete -->
+	<target name="CommunityComment">
+		<!--Get current Date like: 2018-01-01-->
+		<tstamp>
+			<format property="releasedate" pattern="yyyy-MM-d" locale="en"/>
+		</tstamp>
+		<trycatch>
+			<try>
+				<copy file="templetes/community/${version}.txt" tofile="talend/${version}community.txt"/>
+				<replace file="talend/${version}community.txt" token="TPS_NAME" value="${tpsname}"/>
+				<replace file="talend/${version}community.txt" token="BUG_NAME" value="${bugname}"/>
+				<replace file="talend/${version}community.txt" token="PATCH_NAME" value="${patchname}"/>
+				<replace file="talend/${version}community.txt" token="PATCH_NAME" value="${patchname}"/>
+				<replace file="talend/${version}community.txt" token="RELEASE_DATE" value="${releasedate}"/>
+				<loadfile srcfile="talend/${version}community.txt" property="comment"></loadfile>
+				<echo>Patch comment in community has been generated to ${basedir}/talend/${version}community.txt...</echo>
+				<echo>You can use it to create Article in https://community.talend.com/t5/Available-patches/tkb-p/ti_available_patches... </echo>
+				<echo>${comment}</echo>
+			</try>
+			<catch>
+				<echo>!!! Fail to generate community Comment</echo>
+			</catch>
+		</trycatch>
+	</target>
+	
+	<!--Execute Job from here-->
+	<target name="run">
+		<antcall target="JIRAComment"/>
+		<antcall target="CommunityComment"/>
+	</target>
+</project>
